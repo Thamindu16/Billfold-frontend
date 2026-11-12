@@ -5,6 +5,9 @@ import '../profile/profile_view.dart';
 import '../document/document_locker_view.dart';
 import '../document/pdf_overview_view.dart';
 import '../chat/ai_chat_view.dart';
+import 'package:provider/provider.dart';
+import '../../view_models/dashboard_view_model.dart';
+import '../../view_models/document_view_model.dart';
 
 class DocumentStore {
   static final DocumentStore _instance = DocumentStore._internal();
@@ -54,15 +57,38 @@ class _DashboardViewState extends State<DashboardView> {
   int _currentIndex = 0;
   bool isDarkMode = true;
 
-  double totalIncome = 145000.0;
-  double totalExpense = 68200.0;
+  @override
+  void initState() {
+    super.initState();
+    // Screen eka open wenakota backend eken data ganna
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardViewModel>().loadAll();
+    });
+  }
 
   Future<void> _onUploadPDF() async {
     final XFile? file = await openFile();
-    if (file != null) {
+    if (file == null || !mounted) return;
+
+    final docVm = context.read<DocumentViewModel>();
+    final dashVm = context.read<DashboardViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Uploading statement...'),
+        duration: Duration(seconds: 30),
+      ),
+    );
+
+    final ok = await docVm.upload(file.path);
+    if (!mounted) return;
+    messenger.hideCurrentSnackBar();
+
+    if (ok) {
+      await dashVm.loadAll();
+      if (!mounted) return;
       setState(() {
-        totalIncome += 25000.0;
-        totalExpense += 5000.0;
         DocumentStore().addDocument({
           'name': file.name,
           'type': 'Bank statement',
@@ -70,6 +96,22 @@ class _DashboardViewState extends State<DashboardView> {
           'status': 'Encrypted',
         });
       });
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            docVm.importedCount != null
+                ? 'Imported ${docVm.importedCount} transactions'
+                : 'Statement uploaded',
+          ),
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(docVm.error ?? 'Upload failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -109,6 +151,7 @@ class _DashboardViewState extends State<DashboardView> {
   @override
   Widget build(BuildContext context) {
     final docs = DocumentStore().documents;
+    final vm = context.watch<DashboardViewModel>();
 
     return Scaffold(
       drawer: Drawer(
@@ -480,7 +523,7 @@ class _DashboardViewState extends State<DashboardView> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'LKR ${totalIncome.toStringAsFixed(0)}',
+                                  '${vm.currency} ${vm.totalIncome.toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -518,7 +561,7 @@ class _DashboardViewState extends State<DashboardView> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'LKR ${totalExpense.toStringAsFixed(0)}',
+                                  '${vm.currency} ${vm.totalExpenses.toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,

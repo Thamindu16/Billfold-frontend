@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../document/pdf_overview_view.dart';
+import '../../core/utils/user_helper.dart';
+import '../../data/repositories/chat_repository.dart';
 
 class ChatMessage {
   final String text;
@@ -42,95 +44,38 @@ class _AiChatViewState extends State<AiChatView> {
     ),
   ];
 
-  void _sendMessage() {
+  bool _isSending = false;
+
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isSending) return;
 
     _messageController.clear();
 
     setState(() {
+      _isSending = true;
       _messages.add(ChatMessage(text: text, isUser: true));
+      _messages.add(ChatMessage(text: 'Thinking...', isUser: false));
     });
-
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (!mounted) return;
+    String reply;
+    try {
+      // Backend eke POST /chat ekata yawanawa
+      reply = await ChatRepository().sendMessage(text, currentUserId());
+    } catch (e) {
+      reply = 'Sorry, I could not reach the server. $e';
+    }
 
-      String replyText =
-          'I have processed your query based on your secure vault records.';
-      bool showCitation = false;
-      String docTitle = 'HNB_Statement_Jan.pdf';
-      String pageNum = 'Page 2';
-      String detailTitle = 'Transaction record';
-      String paymentAmount = 'LKR 0';
-      String txDate = '14/01/2026';
-
-      final lowerQuery = text.toLowerCase();
-
-      if (lowerQuery.contains('expense') ||
-          lowerQuery.contains('total') ||
-          lowerQuery.contains('spend')) {
-        replyText =
-            'Your total expenses for January were LKR 68,200, mainly covering electricity, groceries, and rent payments.';
-        showCitation = true;
-        docTitle = 'HNB_Statement_Jan.pdf';
-        pageNum = 'Page 2';
-        detailTitle = 'Electricity bill';
-        paymentAmount = 'LKR 4,520';
-        txDate = '14/01/2026';
-      } else if (lowerQuery.contains('income') ||
-          lowerQuery.contains('salary') ||
-          lowerQuery.contains('pay')) {
-        replyText =
-            'Your total income recorded for January is LKR 145,000 including your primary salary deposit.';
-        showCitation = true;
-        docTitle = 'Slip_Pay_2026.pdf';
-        pageNum = 'Page 1';
-        detailTitle = 'Salary deposit';
-        paymentAmount = '+LKR 145,000';
-        txDate = '01/01/2026';
-      } else if (lowerQuery.contains('pdf') ||
-          lowerQuery.contains('statement') ||
-          lowerQuery.contains('show') ||
-          lowerQuery.contains('file') ||
-          lowerQuery.contains('view')) {
-        replyText =
-            'Here is the requested statement document details. You can review the full document directly using the citation below.';
-        showCitation = true;
-        docTitle = 'HNB_Statement_Jan.pdf';
-        pageNum = 'Page 1';
-        detailTitle = 'HNB Bank Statement Jan 2026';
-        paymentAmount = 'Processed';
-        txDate = 'Today';
-      } else {
-        replyText =
-            'I found relevant details in your vault regarding "$text". You can open the full statement to review all breakdowns.';
-        showCitation = true;
-        docTitle = 'HNB_Statement_Jan.pdf';
-        pageNum = 'Page 1';
-        detailTitle = 'General Vault Record';
-        paymentAmount = 'Matched';
-        txDate = 'Today';
-      }
-
-      setState(() {
-        _messages.add(
-          ChatMessage(
-            text: replyText,
-            isUser: false,
-            hasCitation: showCitation,
-            citationTitle: docTitle,
-            citationPage: pageNum,
-            citationDetailTitle: detailTitle,
-            citationPayment: paymentAmount,
-            citationDate: txDate,
-          ),
-        );
-      });
-
-      _scrollToBottom();
+    if (!mounted) return;
+    setState(() {
+      _messages[_messages.length - 1] = ChatMessage(
+        text: reply,
+        isUser: false,
+      );
+      _isSending = false;
     });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {

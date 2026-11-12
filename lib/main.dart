@@ -7,11 +7,19 @@ import 'views/auth/login_view.dart';
 import 'views/auth/register_view.dart';
 import 'views/auth/otp_view.dart';
 import 'views/auth/biometric_view.dart';
+import 'view_models/chat_view_model.dart';
+import 'view_models/dashboard_view_model.dart';
+import 'view_models/document_view_model.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeViewModel(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeViewModel()),
+        ChangeNotifierProvider(create: (_) => ChatViewModel()),
+        ChangeNotifierProvider(create: (_) => DashboardViewModel()),
+        ChangeNotifierProvider(create: (_) => DocumentViewModel()),
+      ],
       child: const BillfoldApp(),
     ),
   );

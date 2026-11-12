@@ -3,11 +3,13 @@
     <!-- Biometric Authentication සපෝට් කිරීම සඳහා අවශ්‍ය Permissions -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:label="Billfold"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
